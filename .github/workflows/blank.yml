@@ -1,0 +1,24 @@
+name: vir-kernel
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      V: 6.12.117
+    steps:
+      - run: sudo apt-get update && sudo apt-get install -y build-essential flex bison bc libssl-dev libelf-dev
+      - run: |
+          wget -q https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-$V.tar.xz
+          tar xf linux-$V.tar.xz
+          cd linux-$V
+          make ARCH=i386 defconfig
+          scripts/config -e DEVTMPFS -e FB -e FB_VESA -e FRAMEBUFFER_CONSOLE \
+            -e VT -e VGA_CONSOLE -e E1000 -e EXT4_FS -e ATA_PIIX \
+            -e SERIAL_8250_CONSOLE -e BLK_DEV_INITRD \
+            --set-str LOCALVERSION "-aurora"
+          make ARCH=i386 olddefconfig
+          make ARCH=i386 -j$(nproc) bzImage
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bzImage-aurora
+          path: linux-${{ env.V }}/arch/x86/boot/bzImage
